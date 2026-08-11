@@ -776,13 +776,13 @@ body {
 /* ==========================================================================
    Dialog / Modal Styling (Premium)
    ========================================================================== */
-dialog#appointment-modal {
+dialog#appointment-modal,
+dialog#confirm-modal {
     margin: auto;
     border: none;
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
     box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color);
-    max-width: 600px;
     width: calc(100vw - 2rem);
     max-height: 90vh; /* Limitar altura máxima en el propio diálogo */
     color: var(--text-primary);
@@ -796,20 +796,31 @@ dialog#appointment-modal {
     transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), display 0.3s allow-discrete;
 }
 
-dialog#appointment-modal[open] {
+dialog#appointment-modal {
+    max-width: 600px;
+}
+
+dialog#confirm-modal {
+    max-width: 440px;
+}
+
+dialog#appointment-modal[open],
+dialog#confirm-modal[open] {
     opacity: 1;
     transform: scale(1) translateY(0);
 }
 
 @starting-style {
-    dialog#appointment-modal[open] {
+    dialog#appointment-modal[open],
+    dialog#confirm-modal[open] {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
 }
 
 /* Dialog Backdrop styling */
-dialog#appointment-modal::backdrop {
+dialog#appointment-modal::backdrop,
+dialog#confirm-modal::backdrop {
     background-color: rgba(10, 15, 30, 0.75);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -817,12 +828,14 @@ dialog#appointment-modal::backdrop {
     transition: opacity 0.3s ease, display 0.3s allow-discrete;
 }
 
-dialog#appointment-modal[open]::backdrop {
+dialog#appointment-modal[open]::backdrop,
+dialog#confirm-modal[open]::backdrop {
     opacity: 1;
 }
 
 @starting-style {
-    dialog#appointment-modal[open]::backdrop {
+    dialog#appointment-modal[open]::backdrop,
+    dialog#confirm-modal[open]::backdrop {
         opacity: 0;
     }
 }

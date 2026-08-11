@@ -331,9 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * Sends DELETE request to remove appointment
      */
     async function deleteAppointment(id, clientName) {
-        if (!confirm(`¿Está seguro de que desea eliminar el turno reservado para "${clientName}"?`)) {
-            return;
-        }
+        const confirmed = await showCustomConfirm(`¿Está seguro de que desea eliminar el turno reservado para "${clientName}"?`);
+        if (!confirmed) return;
 
         try {
             const response = await fetch(`/api/appointments/${id}`, {
@@ -348,6 +347,44 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(error);
             showToast('No se pudo eliminar el turno. Intente nuevamente.', 'error');
         }
+    }
+
+    /**
+     * Muestra un diálogo de confirmación personalizado mediante el uso de <dialog>
+     * y retorna una Promesa para manejar la confirmación de manera asíncrona.
+     */
+    function showCustomConfirm(message) {
+        return new Promise((resolve) => {
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmMessage = document.getElementById('confirm-message');
+            const btnAccept = document.getElementById('btn-confirm-accept');
+            
+            confirmMessage.textContent = message;
+            
+            // Handlers para la resolución de la confirmación
+            const onAccept = () => {
+                cleanup();
+                resolve(true);
+            };
+            
+            const onCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+            
+            const cleanup = () => {
+                btnAccept.removeEventListener('click', onAccept);
+                confirmModal.removeEventListener('close', onCancel);
+                confirmModal.close();
+            };
+            
+            // Registrar listeners temporales
+            btnAccept.addEventListener('click', onAccept);
+            confirmModal.addEventListener('close', onCancel);
+            
+            // Mostrar diálogo nativo
+            confirmModal.showModal();
+        });
     }
 
     /**

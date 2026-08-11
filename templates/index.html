@@ -295,6 +295,28 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
+    <!-- Custom Confirmation Modal -->
+    <dialog id="confirm-modal" closedby="any" aria-labelledby="confirm-title">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="confirm-title">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--color-cancelled); margin-right: 8px;"></i>
+                    Confirmar Acción
+                </h3>
+                <button type="button" class="btn-close-modal" onclick="closeConfirmModal()" aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary);"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+                <button type="button" id="btn-confirm-accept" class="btn btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </dialog>
+
     <!-- JavaScript code placeholder - will link /static/js/app.js in Phase 4 -->
     <script>
         // Funciones temporales para controlar el modal antes de enlazar app.js
@@ -331,6 +353,11 @@
             document.querySelectorAll('.input-wrapper').forEach(wrapper => wrapper.classList.remove('invalid'));
         }
 
+        function closeConfirmModal() {
+            const confirmModal = document.getElementById('confirm-modal');
+            confirmModal.close();
+        }
+
         // Fallback para cerrar haciendo clic en el backdrop para navegadores sin soporte nativo de closedby
         const dialog = document.getElementById('appointment-modal');
         if (!('closedBy' in HTMLDialogElement.prototype)) {
@@ -345,6 +372,23 @@
                 );
                 if (!isDialogContent) {
                     dialog.close();
+                }
+            });
+        }
+
+        const confirmDialog = document.getElementById('confirm-modal');
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+            confirmDialog.addEventListener('click', (event) => {
+                if (event.target !== confirmDialog) return;
+                const rect = confirmDialog.getBoundingClientRect();
+                const isDialogContent = (
+                    rect.top <= event.clientY &&
+                    event.clientY <= rect.top + rect.height &&
+                    rect.left <= event.clientX &&
+                    event.clientX <= rect.left + rect.width
+                );
+                if (!isDialogContent) {
+                    confirmDialog.close();
                 }
             });
         }
