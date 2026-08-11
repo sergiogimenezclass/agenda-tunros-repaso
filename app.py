@@ -1,46 +1,9 @@
 from flask import Flask, render_template, jsonify, request
 import datetime
 import re
+import database
 
 app = Flask(__name__)
-
-# Datos simulados en memoria para la Fase 2
-APPOINTMENTS = [
-    {
-        "id": 1,
-        "client_name": "Carlos Gómez",
-        "client_phone": "11 5555 1234",
-        "client_email": "carlos@gmail.com",
-        "appointment_date": (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-        "appointment_time": "10:30",
-        "service": "Consulta Médica",
-        "status": "Confirmed",
-        "notes": "Paciente requiere chequeo general preventivo."
-    },
-    {
-        "id": 2,
-        "client_name": "María Rodríguez",
-        "client_phone": "11 4444 5678",
-        "client_email": "maria.r@gmail.com",
-        "appointment_date": datetime.date.today().strftime("%Y-%m-%d"),
-        "appointment_time": "15:00",
-        "service": "Peluquería / Estética",
-        "status": "Pending",
-        "notes": "Corte y tintura. Confirmar color antes de la cita."
-    },
-    {
-        "id": 3,
-        "client_name": "Esteban Quito",
-        "client_phone": "11 2222 3333",
-        "client_email": "equito@gmail.com",
-        "appointment_date": (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-        "appointment_time": "11:00",
-        "service": "Servicio Técnico",
-        "status": "Completed",
-        "notes": "Limpieza interna de notebook y cambio de pasta térmica."
-    }
-]
-NEXT_ID = 4
 
 # Servicios válidos para validación
 VALID_SERVICES = [
@@ -113,37 +76,28 @@ def get_appointments():
     status_filter = request.args.get('status')
     search_query = request.args.get('search')
     
-    filtered_list = APPOINTMENTS.copy()
-    
-    # Aplicar filtros
-    if date_filter:
-        filtered_list = [a for a in filtered_list if a["appointment_date"] == date_filter]
-        
-    if status_filter and status_filter != 'all':
-        filtered_list = [a for a in filtered_list if a["status"] == status_filter]
-        
-    if search_query:
-        search_query = search_query.lower()
-        filtered_list = [
-            a for a in filtered_list 
-            if search_query in a["client_name"].lower() or search_query in a["client_phone"]
-        ]
-        
-    # Ordenar por fecha y hora (de más reciente a más antigua)
-    filtered_list.sort(key=lambda x: (x["appointment_date"], x["appointment_time"]))
-    
-    return jsonify(filtered_list)
+    try:
+        appointments = database.get_all_appointments(
+            date_filter=date_filter,
+            status_filter=status_filter,
+            search_query=search_query
+        )
+        return jsonify(appointments)
+    except Exception as e:
+        return jsonify({"error": f"Error al consultar la base de datos: {str(e)}"}), 500
 
 @app.route('/api/appointments/<int:appointment_id>', methods=['GET'])
 def get_appointment(appointment_id):
-    appointment = next((a for a in APPOINTMENTS if a["id"] == appointment_id), None)
-    if not appointment:
-        return jsonify({"error": "Turno no encontrado."}), 404
-    return jsonify(appointment)
+    try:
+        appointment = database.get_appointment_by_id(appointment_id)
+        if not appointment:
+            return jsonify({"error": "Turno no encontrado."}), 404
+        return jsonify(appointment)
+    except Exception as e:
+        return jsonify({"error": f"Error al consultar el turno: {str(e)}"}), 500
 
 @app.route('/api/appointments', methods=['POST'])
 def create_appointment():
-    global NEXT_ID
     data = request.get_json() or {}
     
     # Validar
@@ -151,27 +105,28 @@ def create_appointment():
     if errors:
         return jsonify({"errors": errors}), 400
         
-    # Crear registro
-    new_appointment = {
-        "id": NEXT_ID,
-        "client_name": data["client_name"].strip(),
-        "client_phone": data["client_phone"].strip(),
-        "client_email": data.get("client_email", "").strip(),
-        "appointment_date": data["appointment_date"],
-        "appointment_time": data["appointment_time"],
-        "service": data["service"],
-        "status": data.get("status", "Pending"),
-        "notes": data.get("notes", "").strip()
-    }
-    
-    APPOINTMENTS.append(new_appointment)
-    NEXT_ID += 1
-    
-    return jsonify(new_appointment), 201
+    try:
+        new_id = database.create_appointment(
+            client_name=data["client_name"].strip(),
+            client_phone=data["client_phone"].strip(),
+            client_email=data.get("client_email", "").strip(),
+            appointment_date=data["appointment_date"],
+            appointment_time=data["appointment_time"],
+            service=data["service"],
+            status=data.get("status", "Pending"),
+            notes=data.get("notes", "").strip()
+        )
+        
+        # Devolver el objeto creado
+        created_appointment = database.get_appointment_by_id(new_id)
+        return jsonify(created_appointment), 201
+    except Exception as e:
+        return jsonify({"error": f"Error al guardar en la base de datos: {str(e)}"}), 500
 
 @app.route('/api/appointments/<int:appointment_id>', methods=['PUT'])
 def update_appointment(appointment_id):
-    appointment = next((a for a in APPOINTMENTS if a["id"] == appointment_id), None)
+    # Verificar existencia
+    appointment = database.get_appointment_by_id(appointment_id)
     if not appointment:
         return jsonify({"error": "Turno no encontrado."}), 404
         
@@ -182,27 +137,44 @@ def update_appointment(appointment_id):
     if errors:
         return jsonify({"errors": errors}), 400
         
-    # Actualizar campos
-    appointment["client_name"] = data["client_name"].strip()
-    appointment["client_phone"] = data["client_phone"].strip()
-    appointment["client_email"] = data.get("client_email", "").strip()
-    appointment["appointment_date"] = data["appointment_date"]
-    appointment["appointment_time"] = data["appointment_time"]
-    appointment["service"] = data["service"]
-    appointment["status"] = data.get("status", appointment["status"])
-    appointment["notes"] = data.get("notes", "").strip()
-    
-    return jsonify(appointment)
+    try:
+        success = database.update_appointment(
+            appointment_id=appointment_id,
+            client_name=data["client_name"].strip(),
+            client_phone=data["client_phone"].strip(),
+            client_email=data.get("client_email", "").strip(),
+            appointment_date=data["appointment_date"],
+            appointment_time=data["appointment_time"],
+            service=data["service"],
+            status=data.get("status", appointment["status"]),
+            notes=data.get("notes", "").strip()
+        )
+        
+        if not success:
+            return jsonify({"error": "No se pudo actualizar el turno."}), 500
+            
+        updated_appointment = database.get_appointment_by_id(appointment_id)
+        return jsonify(updated_appointment)
+    except Exception as e:
+        return jsonify({"error": f"Error al actualizar la base de datos: {str(e)}"}), 500
 
 @app.route('/api/appointments/<int:appointment_id>', methods=['DELETE'])
 def delete_appointment(appointment_id):
-    global APPOINTMENTS
-    appointment = next((a for a in APPOINTMENTS if a["id"] == appointment_id), None)
+    # Verificar existencia
+    appointment = database.get_appointment_by_id(appointment_id)
     if not appointment:
         return jsonify({"error": "Turno no encontrado."}), 404
         
-    APPOINTMENTS = [a for a in APPOINTMENTS if a["id"] != appointment_id]
-    return jsonify({"success": True, "message": "Turno eliminado con éxito."})
+    try:
+        success = database.delete_appointment(appointment_id)
+        if not success:
+            return jsonify({"error": "No se pudo eliminar el turno."}), 500
+        return jsonify({"success": True, "message": "Turno eliminado con éxito."})
+    except Exception as e:
+        return jsonify({"error": f"Error al eliminar en la base de datos: {str(e)}"}), 500
+
+# Inicializar Base de Datos al arrancar
+database.init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
