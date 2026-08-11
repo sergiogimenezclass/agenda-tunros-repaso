@@ -784,9 +784,12 @@ dialog#appointment-modal {
     box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color);
     max-width: 600px;
     width: calc(100vw - 2rem);
+    max-height: 90vh; /* Limitar altura máxima en el propio diálogo */
     color: var(--text-primary);
     outline: none;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     /* Entry animation properties */
     opacity: 0;
     transform: scale(0.95) translateY(10px);
@@ -827,7 +830,9 @@ dialog#appointment-modal[open]::backdrop {
 .modal-container {
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
 }
 
 .modal-header {
@@ -837,6 +842,7 @@ dialog#appointment-modal[open]::backdrop {
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-card);
+    flex-shrink: 0; /* Prevenir que colapse */
 }
 
 .modal-header h3 {
@@ -864,10 +870,19 @@ dialog#appointment-modal[open]::backdrop {
     background: hsla(0, 0%, 100%, 0.05);
 }
 
+/* Formulario como contenedor flex intermedio para propagar altura */
+#appointment-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
 /* Modal Body / Rows */
 .modal-body {
     padding: 1.5rem;
     overflow-y: auto;
+    flex: 1; /* Ocupa el espacio restante y permite scroll */
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -876,6 +891,7 @@ dialog#appointment-modal[open]::backdrop {
 .form-row {
     display: flex;
     gap: 1rem;
+    flex-shrink: 0;
 }
 
 @media (max-width: 576px) {
@@ -896,6 +912,7 @@ dialog#appointment-modal[open]::backdrop {
     padding: 1.25rem 1.5rem;
     border-top: 1px solid var(--border-color);
     background: var(--bg-card);
+    flex-shrink: 0; /* Prevenir que colapse */
 }
 
 /* Error message styling */
