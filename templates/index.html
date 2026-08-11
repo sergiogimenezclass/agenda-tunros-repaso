@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Agenda de Turnos CRUD - Aplicación premium para la gestión y reserva de turnos en tiempo real.">
+    <title>Agenda de Turnos | Gestión Premium</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Background Animated Blobs -->
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div>
+                    <h1>Agenda de Turnos</h1>
+                    <p class="subtitle">Panel de Control y Gestión</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button id="btn-new-appointment" class="btn btn-primary btn-with-icon" onclick="openModal()">
+                    <i class="fa-solid fa-plus"></i> Reservar Turno
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Dashboard -->
+        <section class="stats-dashboard" aria-label="Estadísticas de turnos">
+            <div class="stat-card total" id="stat-total">
+                <div class="stat-icon">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Total Turnos</span>
+                </div>
+            </div>
+            
+            <div class="stat-card pending" id="stat-pending">
+                <div class="stat-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Pendientes</span>
+                </div>
+            </div>
+            
+            <div class="stat-card confirmed" id="stat-confirmed">
+                <div class="stat-icon">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Confirmados</span>
+                </div>
+            </div>
+
+            <div class="stat-card completed" id="stat-completed">
+                <div class="stat-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">Completados</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content (Filters & Listings) -->
+        <main class="main-content">
+            <!-- Sidebar / Control Panel -->
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h2><i class="fa-solid fa-sliders"></i> Filtros y Búsqueda</h2>
+                    
+                    <div class="form-group search-group">
+                        <label for="search-input">Buscar Cliente</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                            <input type="text" id="search-input" placeholder="Nombre o Teléfono...">
+                        </div>
+                    </div>
+
+                    <div class="form-group date-group">
+                        <label for="filter-date">Filtrar por Fecha</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-calendar-days input-icon"></i>
+                            <input type="date" id="filter-date">
+                        </div>
+                        <button id="btn-clear-date" class="btn btn-secondary btn-sm" style="margin-top: 8px; width: 100%; display: none;">
+                            <i class="fa-solid fa-rotate-left"></i> Limpiar Fecha
+                        </button>
+                    </div>
+
+                    <div class="form-group status-filter-group">
+                        <label>Estado del Turno</label>
+                        <div class="status-tabs" role="tablist">
+                            <button class="status-tab active" data-status="all" role="tab" aria-selected="true">
+                                <span class="tab-dot dot-all"></span> Todos
+                            </button>
+                            <button class="status-tab" data-status="Pending" role="tab" aria-selected="false">
+                                <span class="tab-dot dot-pending"></span> Pendientes
+                            </button>
+                            <button class="status-tab" data-status="Confirmed" role="tab" aria-selected="false">
+                                <span class="tab-dot dot-confirmed"></span> Confirmados
+                            </button>
+                            <button class="status-tab" data-status="Completed" role="tab" aria-selected="false">
+                                <span class="tab-dot dot-completed"></span> Completados
+                            </button>
+                            <button class="status-tab" data-status="Cancelled" role="tab" aria-selected="false">
+                                <span class="tab-dot dot-cancelled"></span> Cancelados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Board / Appointments List -->
+            <section class="appointments-board" aria-label="Listado de Turnos">
+                <div class="board-header">
+                    <h2><i class="fa-solid fa-list"></i> Próximos Turnos</h2>
+                    <span id="appointments-count" class="badge">0 turnos encontrados</span>
+                </div>
+                
+                <!-- Loading indicator -->
+                <div id="loading-indicator" class="loading-container" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Cargando turnos...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fa-regular fa-calendar-times"></i>
+                    </div>
+                    <h3>No hay turnos registrados</h3>
+                    <p>Prueba a cambiar los filtros o agrega un nuevo turno de reserva utilizando el botón superior.</p>
+                </div>
+
+                <!-- Main Grid of Appointments -->
+                <div id="appointments-grid" class="appointments-grid" style="display: none;">
+                    <!-- Appointments will be injected here dynamically -->
+                </div>
+            </section>
+        </main>
+        
+        <footer class="app-footer">
+            <p>&copy; 2026 - Agenda de Turnos Premium. Diseñado para fines educativos.</p>
+        </footer>
+    </div>
+
+    <!-- Booking Modal (Create / Edit) -->
+    <dialog id="appointment-modal" closedby="any" aria-labelledby="modal-title">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva Reserva de Turno</h3>
+                <button type="button" class="btn-close-modal" onclick="closeModal()" aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="appointment-form" novalidate>
+                <!-- Hidden input for ID (Edit mode) -->
+                <input type="hidden" id="appointment-id">
+                
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="client_name">Nombre del Cliente <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-user input-icon"></i>
+                                <input type="text" id="client_name" name="client_name" required placeholder="Ej. Juan Pérez">
+                            </div>
+                            <span class="error-message" id="error-client_name">Este campo es obligatorio</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="client_phone">Teléfono de Contacto <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-phone input-icon"></i>
+                                <input type="tel" id="client_phone" name="client_phone" required placeholder="Ej. 11 2345 6789">
+                            </div>
+                            <span class="error-message" id="error-client_phone">Este campo es obligatorio</span>
+                        </div>
+                        
+                        <div class="form-group flex-1">
+                            <label for="client_email">Correo Electrónico</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-envelope input-icon"></i>
+                                <input type="email" id="client_email" name="client_email" placeholder="Ej. juan@example.com">
+                            </div>
+                            <span class="error-message" id="error-client_email">Formato de correo inválido</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="appointment_date">Fecha <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-calendar input-icon"></i>
+                                <input type="date" id="appointment_date" name="appointment_date" required>
+                            </div>
+                            <span class="error-message" id="error-appointment_date">Este campo es obligatorio</span>
+                        </div>
+                        
+                        <div class="form-group flex-1">
+                            <label for="appointment_time">Hora <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-clock input-icon"></i>
+                                <input type="time" id="appointment_time" name="appointment_time" required>
+                            </div>
+                            <span class="error-message" id="error-appointment_time">Este campo es obligatorio</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="service">Servicio <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-briefcase input-icon"></i>
+                                <select id="service" name="service" required>
+                                    <option value="" disabled selected>Selecciona un servicio</option>
+                                    <option value="Asesoría General">Asesoría General</option>
+                                    <option value="Consulta Médica">Consulta Médica</option>
+                                    <option value="Servicio Técnico">Servicio Técnico</option>
+                                    <option value="Trámite Administrativo">Trámite Administrativo</option>
+                                    <option value="Peluquería / Estética">Peluquería / Estética</option>
+                                    <option value="Otro">Otro servicio</option>
+                                </select>
+                            </div>
+                            <span class="error-message" id="error-service">Selecciona un servicio válido</span>
+                        </div>
+                        
+                        <div class="form-group flex-1" id="status-group" style="display: none;">
+                            <label for="status">Estado del Turno</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-circle-info input-icon"></i>
+                                <select id="status" name="status">
+                                    <option value="Pending">Pendiente</option>
+                                    <option value="Confirmed">Confirmado</option>
+                                    <option value="Completed">Completado</option>
+                                    <option value="Cancelled">Cancelado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="notes">Notas / Observaciones</label>
+                            <div class="input-wrapper textarea-wrapper">
+                                <textarea id="notes" name="notes" placeholder="Detalles adicionales sobre la cita o necesidades del cliente..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="btn-submit-text">Guardar Reserva</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- JavaScript code placeholder - will link /static/js/app.js in Phase 4 -->
+    <script>
+        // Funciones temporales para controlar el modal antes de enlazar app.js
+        function openModal(isEdit = false) {
+            const modal = document.getElementById('appointment-modal');
+            const statusGroup = document.getElementById('status-group');
+            const modalTitle = document.getElementById('modal-title');
+            const btnSubmitText = document.getElementById('btn-submit-text');
+            
+            if (isEdit) {
+                statusGroup.style.display = 'block';
+                modalTitle.textContent = 'Editar Turno';
+                btnSubmitText.textContent = 'Guardar Cambios';
+            } else {
+                statusGroup.style.display = 'none';
+                modalTitle.textContent = 'Nueva Reserva de Turno';
+                btnSubmitText.textContent = 'Guardar Reserva';
+                document.getElementById('appointment-form').reset();
+                document.getElementById('appointment-id').value = '';
+                // Establecer fecha por defecto a mañana
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                document.getElementById('appointment_date').value = tomorrow.toISOString().split('T')[0];
+            }
+            
+            modal.showModal();
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('appointment-modal');
+            modal.close();
+            // Limpiar errores
+            document.querySelectorAll('.error-message').forEach(err => err.classList.remove('visible'));
+            document.querySelectorAll('.input-wrapper').forEach(wrapper => wrapper.classList.remove('invalid'));
+        }
+
+        // Fallback para cerrar haciendo clic en el backdrop para navegadores sin soporte nativo de closedby
+        const dialog = document.getElementById('appointment-modal');
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+            dialog.addEventListener('click', (event) => {
+                if (event.target !== dialog) return;
+                const rect = dialog.getBoundingClientRect();
+                const isDialogContent = (
+                    rect.top <= event.clientY &&
+                    event.clientY <= rect.top + rect.height &&
+                    rect.left <= event.clientX &&
+                    event.clientX <= rect.left + rect.width
+                );
+                if (!isDialogContent) {
+                    dialog.close();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
