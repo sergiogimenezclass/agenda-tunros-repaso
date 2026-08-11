@@ -33,13 +33,26 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 
     function init() {
-        // Setup Date picker default restraints (min today)
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('appointment_date').min = today;
+        const dateFormInput = document.getElementById('appointment_date');
+
+        // Aplicar la máscara de formato argentino (DD/MM/AAAA) a los inputs
+        applyDateMask(dateFormInput);
+        applyDateMask(filterDate);
 
         // Event Listeners
         searchInput.addEventListener('input', handleSearchInput);
-        filterDate.addEventListener('change', handleDateFilterChange);
+        filterDate.addEventListener('input', handleDateFilterChange);
+        
+        // Validar filtro de fecha al perder foco (blur)
+        filterDate.addEventListener('blur', (e) => {
+            const val = e.target.value;
+            const wrapper = e.target.closest('.input-wrapper');
+            if (val.trim() && val.length < 10) {
+                wrapper.classList.add('invalid');
+                showToast('La fecha debe tener el formato DD/MM/AAAA', 'error');
+            }
+        });
+
         btnClearDate.addEventListener('click', clearDateFilter);
         
         statusTabs.forEach(tab => {
@@ -286,7 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('client_name').value = appointment.client_name;
         document.getElementById('client_phone').value = appointment.client_phone;
         document.getElementById('client_email').value = appointment.client_email || '';
-        document.getElementById('appointment_date').value = appointment.appointment_date;
+        // Cargar en formato argentino DD/MM/AAAA
+        document.getElementById('appointment_date').value = isoToArDate(appointment.appointment_date);
         document.getElementById('appointment_time').value = appointment.appointment_time;
         document.getElementById('service').value = appointment.service;
         document.getElementById('status').value = appointment.status;
@@ -398,12 +412,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const appointmentId = document.getElementById('appointment-id').value;
         const isEdit = !!appointmentId;
 
-        // Gather form data
+        // Gather form data - convertir fecha a ISO para el backend
         const data = {
             client_name: document.getElementById('client_name').value.trim(),
             client_phone: document.getElementById('client_phone').value.trim(),
             client_email: document.getElementById('client_email').value.trim(),
-            appointment_date: document.getElementById('appointment_date').value,
+            appointment_date: arToIsoDate(document.getElementById('appointment_date').value.trim()),
             appointment_time: document.getElementById('appointment_time').value,
             service: document.getElementById('service').value,
             notes: document.getElementById('notes').value.trim()
@@ -484,10 +498,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Date validation
-        if (!dateInput.value) {
+        // Date validation (formato argentino y fecha real no pasada)
+        const dateVal = dateInput.value.trim();
+        if (!dateVal) {
             showFieldError('appointment_date', 'La fecha de la cita es obligatoria.');
             isValid = false;
+        } else {
+            const dateValidation = isValidArgentineDate(dateVal, false); // No permitir fechas pasadas
+            if (!dateValidation.valid) {
+                showFieldError('appointment_date', dateValidation.message);
+                isValid = false;
+            }
         }
 
         // Time validation
@@ -547,13 +568,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleDateFilterChange(e) {
-        currentFilters.date = e.target.value;
-        if (currentFilters.date) {
-            btnClearDate.style.display = 'block';
-        } else {
+        const val = e.target.value;
+        const wrapper = e.target.closest('.input-wrapper');
+        
+        if (!val.trim()) {
+            currentFilters.date = '';
             btnClearDate.style.display = 'none';
+            wrapper.classList.remove('invalid');
+            fetchAppointments();
+            return;
         }
-        fetchAppointments();
+
+        // Aplicamos el filtro solo si se completó de escribir la fecha (10 caracteres)
+        if (val.length === 10) {
+            const validation = isValidArgentineDate(val, true); // Permitir fechas pasadas en filtro
+            if (validation.valid) {
+                currentFilters.date = arToIsoDate(val);
+                btnClearDate.style.display = 'block';
+                wrapper.classList.remove('invalid');
+                fetchAppointments();
+            } else {
+                wrapper.classList.add('invalid');
+                currentFilters.date = 'invalid-date'; // Forza a que no retorne resultados por error
+            }
+        } else {
+            wrapper.classList.remove('invalid');
+        }
     }
 
     function clearDateFilter() {
@@ -658,5 +698,112 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         window.requestAnimationFrame(step);
+    }
+
+    /* ==========================================================================
+       Date Helpers & Masks (Option 2 - Argentina Format)
+       ========================================================================== */
+
+    /**
+     * Aplica una máscara interactiva a un input de texto para autocompletar
+     * las barras del formato de fecha DD/MM/AAAA.
+     */
+    function applyDateMask(inputElement) {
+        let previousValue = '';
+        inputElement.addEventListener('input', () => {
+            let value = inputElement.value.replace(/\D/g, ''); // Remover todo lo que no sea número
+            let formatted = '';
+            
+            // Permitir borrar barras sin trabarse
+            if (inputElement.value.length < previousValue.length) {
+                if (inputElement.value.endsWith('/')) {
+                    inputElement.value = inputElement.value.slice(0, -1);
+                }
+                previousValue = inputElement.value;
+                return;
+            }
+            
+            if (value.length > 0) {
+                formatted = value.substring(0, 2);
+                if (value.length > 2) {
+                    formatted += '/' + value.substring(2, 4);
+                }
+                if (value.length > 4) {
+                    formatted += '/' + value.substring(4, 8);
+                }
+            }
+            
+            inputElement.value = formatted;
+            previousValue = formatted;
+        });
+        
+        // Ajuste en el pegado de texto
+        inputElement.addEventListener('paste', () => {
+            setTimeout(() => {
+                inputElement.value = inputElement.value.replace(/\D/g, '').substring(0, 8);
+                inputElement.dispatchEvent(new Event('input'));
+            }, 0);
+        });
+    }
+
+    /**
+     * Convierte DD/MM/AAAA a YYYY-MM-DD
+     */
+    function arToIsoDate(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return '';
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+    }
+
+    /**
+     * Convierte YYYY-MM-DD a DD/MM/AAAA
+     */
+    function isoToArDate(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return '';
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+    }
+
+    /**
+     * Valida formato, existencia real y rango de fecha.
+     */
+    function isValidArgentineDate(dateStr, allowPast = false) {
+        const regex = /^\d{2}\/\d{2}\/\d{4}$/;
+        if (!regex.test(dateStr)) {
+            return { valid: false, message: 'Formato inválido. Use DD/MM/AAAA.' };
+        }
+
+        const [dayStr, monthStr, yearStr] = dateStr.split('/');
+        const day = parseInt(dayStr, 10);
+        const month = parseInt(monthStr, 10);
+        const year = parseInt(yearStr, 10);
+
+        if (month < 1 || month > 12) {
+            return { valid: false, message: 'Mes debe estar entre 01 y 12.' };
+        }
+
+        const daysInMonth = [31, (isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        if (day < 1 || day > daysInMonth[month - 1]) {
+            return { valid: false, message: 'El día ingresado no existe en el mes.' };
+        }
+
+        if (!allowPast) {
+            const inputDate = new Date(year, month - 1, day);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (inputDate < today) {
+                return { valid: false, message: 'La fecha no puede ser anterior a hoy.' };
+            }
+        }
+
+        return { valid: true };
+    }
+
+    function isLeapYear(year) {
+        return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
     }
 });
