@@ -110,7 +110,7 @@
                         <label for="filter-date">Filtrar por Fecha</label>
                         <div class="input-wrapper">
                             <i class="fa-solid fa-calendar-days input-icon"></i>
-                            <input type="date" id="filter-date">
+                            <input type="text" id="filter-date" placeholder="DD/MM/AAAA" maxlength="10">
                         </div>
                         <button id="btn-clear-date" class="btn btn-secondary btn-sm" style="margin-top: 8px; width: 100%; display: none;">
                             <i class="fa-solid fa-rotate-left"></i> Limpiar Fecha
@@ -225,7 +225,7 @@
                             <label for="appointment_date">Fecha <span class="required">*</span></label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-calendar input-icon"></i>
-                                <input type="date" id="appointment_date" name="appointment_date" required>
+                                <input type="text" id="appointment_date" name="appointment_date" required placeholder="DD/MM/AAAA" maxlength="10">
                             </div>
                             <span class="error-message" id="error-appointment_date">Este campo es obligatorio</span>
                         </div>
@@ -336,10 +336,13 @@
                 btnSubmitText.textContent = 'Guardar Reserva';
                 document.getElementById('appointment-form').reset();
                 document.getElementById('appointment-id').value = '';
-                // Establecer fecha por defecto a mañana
+                // Establecer fecha por defecto a mañana (formato DD/MM/AAAA)
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                document.getElementById('appointment_date').value = tomorrow.toISOString().split('T')[0];
+                const day = String(tomorrow.getDate()).padStart(2, '0');
+                const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                const year = tomorrow.getFullYear();
+                document.getElementById('appointment_date').value = `${day}/${month}/${year}`;
             }
             
             modal.showModal();
